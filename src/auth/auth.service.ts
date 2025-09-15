@@ -21,7 +21,6 @@ export class AuthService {
     }
 
     async login(userPayload: any) {
-        // fetch full user with role + location hierarchy
         const user = await this.usersService.findById(userPayload.id);
 
         if (!user) {
@@ -36,7 +35,7 @@ export class AuthService {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role, // role is eager-loaded
+                role: user.role, 
                 location: buildLocationTree(user.location),
             },
         };

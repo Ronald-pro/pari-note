@@ -54,9 +54,19 @@ export class UsersService {
             relations: ['location'],
         });
 
-        if (!user || !user.location) {
-            throw new NotFoundException('User not found');
-        }
+        if (!user) {
+          throw new NotFoundException('User not found');
+       }
+
+       if (user.role?.name.toLowerCase() === 'admin') {
+        return this.usersRepo.find({
+         relations: ['role', 'location'],
+        });
+       }
+
+       if (!user.location) {
+        throw new NotFoundException('User location not set');
+       }
         const accessibleLocationIds = await this.locationsService.getAccessibleLocationIds(user.location.id);
 
         return this.usersRepo.find({
