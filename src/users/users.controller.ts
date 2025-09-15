@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request, SetMetadata } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, UseGuards, Request, SetMetadata } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { UsersService } from './users.service';
@@ -32,5 +32,11 @@ export class UsersController {
     @Get()
     async findAll() {
         return this.usersService.findAll();
+    }
+
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Put(':id')
+    async updateUser(@Param('id') id: number, @Body() body: any) {
+        return this.usersService.updateUser(id, body);
     }
 }

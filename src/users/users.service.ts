@@ -74,5 +74,31 @@ export class UsersService {
             relations: ['role', 'location'],
         });
     }
+
+    async updateUser(id: number, userDto: any): Promise<User> {
+       const user = await this.usersRepo.findOne({ where: { id }, relations: ['role', 'location'] });
+
+       if (!user) {
+         throw new NotFoundException(`User with ID ${id} not found`);
+       }
+
+       if (userDto.password) {
+         userDto.password = await bcrypt.hash(userDto.password, 10);
+       }
+
+       if (userDto.roleId) {
+         user.role = { id: userDto.roleId } as any;
+         delete userDto.roleId;
+       }
+
+       if (userDto.locationId) {
+         user.location = { id: userDto.locationId } as any;
+         delete userDto.locationId;
+       }
+
+       Object.assign(user, userDto);
+       return this.usersRepo.save(user);
+   }
+
 }
 
