@@ -232,6 +232,4 @@ async getStillbirthStats(locationId: number) {
   };
 }
 
-
-
 }

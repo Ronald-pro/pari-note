@@ -10,9 +10,10 @@ import { Mother } from '../mothers/entities/mother.entity';
 import { Location } from '../locations/entities/location.entity';
 import { NotificationCreatedListener } from './listeners/notification-created.listener';
 import { MailModule } from '../mail/mail.module';
+import { LocationsModule } from '../locations/locations.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Notification, UserNotification, Baby, Mother, Location]), MailModule, UsersModule],
+  imports: [TypeOrmModule.forFeature([Notification, UserNotification, Baby, Mother, Location]), MailModule, LocationsModule, UsersModule],
   controllers: [NotificationsController],
   providers: [NotificationsService, NotificationCreatedListener],
   exports: [NotificationsService],
