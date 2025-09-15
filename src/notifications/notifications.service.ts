@@ -110,36 +110,128 @@ export class NotificationsService {
 
 async getStillbirthStats(locationId: number) {
 
-  const total = await this.babiesRepo.count({
-    where: {
-      outcome: 'stillbirth',
-      notification: {
-        location: { id: locationId },
-      },
-    },
-    relations: ['notification', 'notification.location'],
-  });
+  const today = new Date();
+  const startOfDay = new Date(today.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
-  const bySex = await this.babiesRepo
+  const totalToday = await this.babiesRepo
     .createQueryBuilder('baby')
     .innerJoin('baby.notification', 'notification')
     .innerJoin('notification.location', 'location')
     .where('location.id = :locationId', { locationId })
-    .andWhere('LOWER(baby.outcome) = :outcome', { outcome: 'stillbirth' })
+    .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
+    .andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
+      start: startOfDay,
+      end: endOfDay,
+    })
+    .getCount();
+
+  const sexToday = await this.babiesRepo
+    .createQueryBuilder('baby')
+    .innerJoin('baby.notification', 'notification')
+    .innerJoin('notification.location', 'location')
+    .where('location.id = :locationId', { locationId })
+    .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
+    .andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
+      start: startOfDay,
+      end: endOfDay,
+    })
     .select('baby.sex', 'sex')
     .addSelect('COUNT(*)', 'count')
     .groupBy('baby.sex')
     .getRawMany();
 
-  const sex: Record<string, number> = {};
-  for (const row of bySex) {
-    sex[row.sex?.toLowerCase() || 'unknown'] = Number(row.count);
+  const sexTodayMap: Record<string, number> = {};
+  for (const row of sexToday) {
+    sexTodayMap[row.sex?.toLowerCase() || 'unknown'] = Number(row.count);
   }
 
+  const typeTodayRows = await this.babiesRepo
+    .createQueryBuilder('baby')
+    .innerJoin('baby.notification', 'notification')
+    .innerJoin('notification.location', 'location')
+    .where('location.id = :locationId', { locationId })
+    .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
+    .andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
+      start: startOfDay,
+      end: endOfDay,
+    })
+    .select('baby.outcome', 'type')
+    .addSelect('COUNT(*)', 'count')
+    .groupBy('baby.outcome')
+    .getRawMany();
+
+  const typeTodayMap: Record<string, number> = {};
+  for (const row of typeTodayRows) {
+    typeTodayMap[row.type?.toLowerCase() || 'unknown'] = Number(row.count);
+  }
+
+  const monthlyRaw = await this.babiesRepo
+    .createQueryBuilder('baby')
+    .innerJoin('baby.notification', 'notification')
+    .innerJoin('notification.location', 'location')
+    .innerJoin('notification.mother', 'mother')
+    .where('location.id = :locationId', { locationId })
+    .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
+    .select("DATE_FORMAT(notification.dateOfNotification, '%M %Y')", 'month')
+    .addSelect('COUNT(*)', 'total')
+    .addSelect('AVG(baby.birthWeight)', 'avgWeight')
+    .addSelect(
+      `SUM(CASE WHEN LOWER(baby.sex) = 'male' THEN 1 ELSE 0 END)`,
+      'male'
+    )
+    .addSelect(
+      `SUM(CASE WHEN LOWER(baby.sex) = 'female' THEN 1 ELSE 0 END)`,
+      'female'
+    )
+    .addSelect(
+      `SUM(CASE WHEN LOWER(baby.outcome) = 'fresh stillbirth' THEN 1 ELSE 0 END)`,
+      'fresh'
+    )
+    .addSelect(
+      `SUM(CASE WHEN LOWER(baby.outcome) = 'macerated stillbirth' THEN 1 ELSE 0 END)`,
+      'macerated'
+    )
+    .addSelect(
+      `SUM(CASE WHEN LOWER(mother.placeOfDelivery) = 'facility' THEN 1 ELSE 0 END)`,
+      'facility'
+    )
+    .addSelect(
+      `SUM(CASE WHEN LOWER(mother.placeOfDelivery) = 'home' THEN 1 ELSE 0 END)`,
+      'home'
+    )
+    .groupBy("DATE_FORMAT(notification.dateOfNotification, '%M %Y')")
+    .orderBy("MIN(notification.dateOfNotification)", 'ASC')
+    .getRawMany();
+
+  const monthly = monthlyRaw.map((row) => ({
+    month: row.month,
+    total: Number(row.total),
+    avgWeight: row.avgWeight ? Number(row.avgWeight) : null,
+    sex: {
+      male: Number(row.male),
+      female: Number(row.female),
+    },
+    type: {
+      fresh: Number(row.fresh),
+      macerated: Number(row.macerated),
+    },
+    place: {
+      facility: Number(row.facility),
+      home: Number(row.home),
+    },
+  }));
+
   return {
-    total,
-    sex,
+    today: {
+      total: totalToday,
+      sex: sexTodayMap,
+      type: typeTodayMap,
+    },
+    monthly,
   };
 }
+
+
 
 }
