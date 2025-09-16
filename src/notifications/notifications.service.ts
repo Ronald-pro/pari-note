@@ -111,8 +111,6 @@ export class NotificationsService {
 async getStillbirthStats(locationId: number) {
 
   const today = new Date();
-  const startOfDay = new Date(today.setHours(0, 0, 0, 0));
-  const endOfDay = new Date(today.setHours(23, 59, 59, 999));
 
   const totalToday = await this.babiesRepo
     .createQueryBuilder('baby')
@@ -120,10 +118,7 @@ async getStillbirthStats(locationId: number) {
     .innerJoin('notification.location', 'location')
     .where('location.id = :locationId', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
-    .andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
-      start: startOfDay,
-      end: endOfDay,
-    })
+    .andWhere('notification.dateOfNotification = CURDATE()')
     .getCount();
 
   const sexToday = await this.babiesRepo
@@ -132,10 +127,7 @@ async getStillbirthStats(locationId: number) {
     .innerJoin('notification.location', 'location')
     .where('location.id = :locationId', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
-    .andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
-      start: startOfDay,
-      end: endOfDay,
-    })
+    .andWhere('notification.dateOfNotification = CURDATE()')
     .select('baby.sex', 'sex')
     .addSelect('COUNT(*)', 'count')
     .groupBy('baby.sex')
@@ -152,10 +144,7 @@ async getStillbirthStats(locationId: number) {
     .innerJoin('notification.location', 'location')
     .where('location.id = :locationId', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
-    .andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
-      start: startOfDay,
-      end: endOfDay,
-    })
+    .andWhere('notification.dateOfNotification = CURDATE()')
     .select('baby.outcome', 'type')
     .addSelect('COUNT(*)', 'count')
     .groupBy('baby.outcome')
