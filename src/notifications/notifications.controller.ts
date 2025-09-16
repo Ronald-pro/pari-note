@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, UseGuards, SetMetadata } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, UseGuards, Request, Query, SetMetadata } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -38,4 +38,23 @@ export class NotificationsController {
   async getStillbirthStats(@Param('locationId') locationId: number) {
     return this.notificationsService.getStillbirthStats(Number(locationId));
   }
+
+  @Get('stillbirth/records')
+  async getStillbirthRecords(
+  @Request() req,
+  @Query('startDate') startDate?: string,
+  @Query('endDate') endDate?: string,
+  @Query('page') page = 1,
+  @Query('limit') limit = 50,
+) {
+  return this.notificationsService.getStillbirthRecords(
+    req.user,
+    startDate,
+    endDate,
+    Number(page),
+    Number(limit),
+  );
+}
+
+
 }

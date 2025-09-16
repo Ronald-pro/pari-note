@@ -7,6 +7,7 @@ import { Mother } from '../mothers/entities/mother.entity';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { Location } from '../locations/entities/location.entity';
 import { User } from '../users/entities/user.entity';
+import { LocationsService } from '../locations/locations.service';
 
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { NotificationCreatedEvent } from './events/notification-created.event';
@@ -27,6 +28,8 @@ export class NotificationsService {
     private readonly locationsRepo: Repository<Location>,
 
     private readonly eventEmitter: EventEmitter2,
+
+    private readonly locationsService: LocationsService,
   ) {}
 
   private async getParentUsers(locationId: number): Promise<User[]> {
@@ -218,6 +221,53 @@ async getStillbirthStats(locationId: number) {
       type: typeTodayMap,
     },
     monthly,
+  };
+}
+
+async getStillbirthRecords(
+  user: User,
+  startDate?: string,
+  endDate?: string,
+  page = 1,
+  limit = 50,
+) {
+  const qb = this.babiesRepo
+    .createQueryBuilder('baby')
+    .innerJoinAndSelect('baby.notification', 'notification')
+    .innerJoinAndSelect('notification.mother', 'mother')
+    .innerJoinAndSelect('notification.location', 'location')
+    .where('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' });
+
+  if (user.role?.name.toLowerCase() !== 'admin') {
+    const accessibleIds = await this.locationsService.getAccessibleLocationIds(
+      user.location.id,
+    );
+    qb.andWhere('location.id IN (:...ids)', { ids: accessibleIds });
+  }
+
+  if (startDate && endDate) {
+    qb.andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
+      start: startDate,
+      end: endDate,
+    });
+  } else if (startDate) {
+    qb.andWhere('notification.dateOfNotification >= :start', { start: startDate });
+  } else if (endDate) {
+    qb.andWhere('notification.dateOfNotification <= :end', { end: endDate });
+  }
+
+  const [records, total] = await qb
+    .orderBy('notification.dateOfNotification', 'DESC')
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getManyAndCount();
+
+  return {
+    data: records,
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
   };
 }
 
