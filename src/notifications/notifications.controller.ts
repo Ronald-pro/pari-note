@@ -39,13 +39,15 @@ export class NotificationsController {
     return this.notificationsService.getStillbirthStats(Number(locationId));
   }
 
-  @Get('stillbirth/records')
-  async getStillbirthRecords(
+ @UseGuards(JwtAuthGuard)
+@Get('stillbirth/records')
+async getStillbirthRecords(
   @Request() req,
   @Query('startDate') startDate?: string,
   @Query('endDate') endDate?: string,
   @Query('page') page = 1,
   @Query('limit') limit = 50,
+  @Query('locationId') locationId?: string, 
 ) {
   return this.notificationsService.getStillbirthRecords(
     req.user,
@@ -53,6 +55,7 @@ export class NotificationsController {
     endDate,
     Number(page),
     Number(limit),
+    locationId ? Number(locationId) : undefined,
   );
 }
 

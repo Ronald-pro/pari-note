@@ -158,6 +158,24 @@ async getStillbirthStats(locationId: number) {
     typeTodayMap[row.type?.toLowerCase() || 'unknown'] = Number(row.count);
   }
 
+  const placeToday = await this.babiesRepo
+    .createQueryBuilder('baby')
+    .innerJoin('baby.notification', 'notification')
+    .innerJoin('notification.location', 'location')
+    .innerJoin('notification.mother', 'mother')
+    .where('location.id = :locationId', { locationId })
+    .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
+    .andWhere('notification.dateOfNotification = CURDATE()')
+    .select('mother.placeOfDelivery', 'place')
+    .addSelect('COUNT(*)', 'count')
+    .groupBy('mother.placeOfDelivery')
+    .getRawMany();
+
+  const placeTodayMap: Record<string, number> = {};
+  for (const row of placeToday) {
+    placeTodayMap[row.place?.toLowerCase() || 'unknown'] = Number(row.count);
+  }
+
   const monthlyRaw = await this.babiesRepo
     .createQueryBuilder('baby')
     .innerJoin('baby.notification', 'notification')
@@ -219,55 +237,56 @@ async getStillbirthStats(locationId: number) {
       total: totalToday,
       sex: sexTodayMap,
       type: typeTodayMap,
+      place: placeTodayMap,
     },
     monthly,
   };
 }
 
 async getStillbirthRecords(
-  user: User,
+  user: any,
   startDate?: string,
   endDate?: string,
   page = 1,
   limit = 50,
+  locationId?: number,
 ) {
-  const qb = this.babiesRepo
-    .createQueryBuilder('baby')
-    .innerJoinAndSelect('baby.notification', 'notification')
-    .innerJoinAndSelect('notification.mother', 'mother')
-    .innerJoinAndSelect('notification.location', 'location')
-    .where('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' });
+  const offset = (page - 1) * limit;
 
-  if (user.role?.name.toLowerCase() !== 'admin') {
-    const accessibleIds = await this.locationsService.getAccessibleLocationIds(
-      user.location.id,
-    );
-    qb.andWhere('location.id IN (:...ids)', { ids: accessibleIds });
+  const query = this.notificationsRepo
+    .createQueryBuilder('notifications')
+    .innerJoinAndSelect('notifications.baby', 'baby')
+    .innerJoinAndSelect('notifications.mother', 'mother')
+    .where('notifications.type = :type', { type: 'stillbirth' })
+    .orderBy('notifications.createdAt', 'DESC')
+    .skip(offset)
+    .take(limit);
+
+  if (startDate) {
+    query.andWhere('notifications.dateOfNotification >= :startDate', { startDate });
+  }
+  if (endDate) {
+    query.andWhere('notifications.dateOfNotification <= :endDate', { endDate });
   }
 
-  if (startDate && endDate) {
-    qb.andWhere('notification.dateOfNotification BETWEEN :start AND :end', {
-      start: startDate,
-      end: endDate,
-    });
-  } else if (startDate) {
-    qb.andWhere('notification.dateOfNotification >= :start', { start: startDate });
-  } else if (endDate) {
-    qb.andWhere('notification.dateOfNotification <= :end', { end: endDate });
+  if (user.role.toLowerCase() === 'admin') {
+    if (locationId) {
+      query.andWhere('notifications.locationId = :locationId', { locationId });
+    }
+  } else {
+    query.andWhere('notifications.locationId = :locationId', { locationId: user.locationId });
   }
 
-  const [records, total] = await qb
-    .orderBy('notification.dateOfNotification', 'DESC')
-    .skip((page - 1) * limit)
-    .take(limit)
-    .getManyAndCount();
+  const [records, total] = await query.getManyAndCount();
 
   return {
     data: records,
-    total,
-    page,
-    limit,
-    totalPages: Math.ceil(total / limit),
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
   };
 }
 
