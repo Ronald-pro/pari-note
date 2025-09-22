@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
@@ -244,50 +244,51 @@ async getStillbirthStats(locationId: number) {
 }
 
 async getStillbirthRecords(
-  user: any,
+  locationId: number,
   startDate?: string,
   endDate?: string,
   page = 1,
   limit = 50,
-  locationId?: number,
 ) {
-  const offset = (page - 1) * limit;
 
-  const query = this.notificationsRepo
-    .createQueryBuilder('notifications')
-    .innerJoinAndSelect('notifications.baby', 'baby')
-    .innerJoinAndSelect('notifications.mother', 'mother')
-    .where('notifications.type = :type', { type: 'stillbirth' })
-    .orderBy('notifications.createdAt', 'DESC')
-    .skip(offset)
-    .take(limit);
+  const qb = this.notificationsRepo
+    .createQueryBuilder('notification')
+    .leftJoinAndSelect('notification.babies', 'baby')
+    .leftJoinAndSelect('notification.mother', 'mother')
+    .leftJoinAndSelect('notification.location', 'location')
+    .where('location.id = :locationId', { locationId })
+    .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' });
 
-  if (startDate) {
-    query.andWhere('notifications.dateOfNotification >= :startDate', { startDate });
-  }
-  if (endDate) {
-    query.andWhere('notifications.dateOfNotification <= :endDate', { endDate });
-  }
+  if (startDate) qb.andWhere('notification.dateOfNotification >= :startDate', { startDate });
+  if (endDate) qb.andWhere('notification.dateOfNotification <= :endDate', { endDate });
 
-  if (user.role.toLowerCase() === 'admin') {
-    if (locationId) {
-      query.andWhere('notifications.locationId = :locationId', { locationId });
-    }
-  } else {
-    query.andWhere('notifications.locationId = :locationId', { locationId: user.locationId });
-  }
-
-  const [records, total] = await query.getManyAndCount();
-
-  return {
-    data: records,
-    pagination: {
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    },
-  };
+  return qb
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getMany();
 }
+
+async getStillbirthRecordsAdmin(
+  startDate?: string,
+  endDate?: string,
+  page = 1,
+  limit = 50,
+) {
+  const qb = this.notificationsRepo
+    .createQueryBuilder('notification')
+    .leftJoinAndSelect('notification.babies', 'baby')
+    .leftJoinAndSelect('notification.mother', 'mother')
+    .leftJoinAndSelect('notification.location', 'location')
+    .where('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' });
+
+  if (startDate) qb.andWhere('notification.dateOfNotification >= :startDate', { startDate });
+  if (endDate) qb.andWhere('notification.dateOfNotification <= :endDate', { endDate });
+
+  return qb
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getMany();
+}
+
 
 }

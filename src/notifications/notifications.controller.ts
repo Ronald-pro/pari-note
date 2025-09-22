@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, UseGuards, Request, Query, SetMetadata } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, UseGuards, Request, Query, SetMetadata,ParseIntPipe, Req, ForbiddenException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
@@ -39,25 +39,43 @@ export class NotificationsController {
     return this.notificationsService.getStillbirthStats(Number(locationId));
   }
 
- @UseGuards(JwtAuthGuard)
-@Get('stillbirth/records')
+@UseGuards(JwtAuthGuard)
+ @Get('stillbirths/records/:locationId')
 async getStillbirthRecords(
-  @Request() req,
+  @Req() req,
+  @Param('locationId') locationId: number,
   @Query('startDate') startDate?: string,
   @Query('endDate') endDate?: string,
   @Query('page') page = 1,
   @Query('limit') limit = 50,
-  @Query('locationId') locationId?: string, 
+
 ) {
   return this.notificationsService.getStillbirthRecords(
-    req.user,
+    Number(locationId),
     startDate,
     endDate,
     Number(page),
     Number(limit),
-    locationId ? Number(locationId) : undefined,
   );
 }
 
+@UseGuards(JwtAuthGuard)
+@Roles('admin')
+@Get('stillbirths/records/admin')
+async getStillbirthRecordsAdmin(
+  @Req() req,
+  @Query('startDate') startDate?: string,
+  @Query('endDate') endDate?: string,
+  @Query('page') page = 1,
+  @Query('limit') limit = 50,
+) {
+
+  return this.notificationsService.getStillbirthRecordsAdmin(
+    startDate,
+    endDate,
+    Number(page),
+    Number(limit),
+  );
+}
 
 }
