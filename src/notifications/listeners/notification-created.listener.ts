@@ -13,13 +13,13 @@ export class NotificationCreatedListener {
   async handleNotificationCreated(event: NotificationCreatedEvent) {
     const { notification, parentUsers } = event;
 
-    this.logger.log(`📢 Listener received event for notification ${notification.id}`);
-  this.logger.log(`👶 Babies payload: ${JSON.stringify(notification.babies)}`);
-  this.logger.log(`👥 Parent users: ${JSON.stringify(parentUsers)}`);
+  //   this.logger.log(` Listener received event for notification ${notification.id}`);
+  // this.logger.log(` Babies payload: ${JSON.stringify(notification.babies)}`);
+  // this.logger.log(` Parent users: ${JSON.stringify(parentUsers)}`);
 
     const hasStillbirth = notification.babies?.some(
-      (b) => b.outcome?.toLowerCase() === 'stillbirth',
-    );
+     (b) => b.outcome?.toLowerCase().includes('stillbirth'),
+   );
 
     if (hasStillbirth && parentUsers?.length) {
       for (const user of parentUsers) {
@@ -32,7 +32,7 @@ export class NotificationCreatedListener {
             template: './stillbirth-alert',
             context: {
               location: notification.location?.name,
-              date: notification.dateOfNotification,
+              date: notification.createdAt,
               motherAge: notification.mother?.age,
             },
           });

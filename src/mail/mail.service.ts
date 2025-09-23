@@ -14,8 +14,8 @@ export class MailService {
       const result = await this.mailerService.sendMail({
         to,
         subject: 'New Notification',
-        template: './stillbirth-alert', // e.g. templates/notification.hbs
-        context, // e.g. { name: 'Ronald', message: 'Hello world' }
+        template: './stillbirth-alert',
+        context, 
       });
 
       this.logger.log(`✅ Email queued successfully: ${result.messageId || 'no id'}`);
