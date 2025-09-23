@@ -27,7 +27,9 @@ export class AuthService {
             throw new UnauthorizedException('Invalid user');
         }
 
-        const payload = { sub: user.id, email: user.email, role: user.role.name };
+        const roles = user.roles?.map((r) => r.name) || [];
+
+        const payload = { sub: user.id, email: user.email, roles, };
 
         return {
             access_token: this.jwtService.sign(payload),
@@ -35,7 +37,7 @@ export class AuthService {
                 id: user.id,
                 name: user.name,
                 email: user.email,
-                role: user.role, 
+                roles,
                 location: buildLocationTree(user.location),
             },
         };

@@ -13,26 +13,28 @@ export class UsersService {
         private readonly locationsService: LocationsService,
     ) { }
 
-    async create(userDto: any) {
-  const { roleId, locationId, password, ...rest } = userDto;
+  async create(userDto: any) {
+  const { roleIds, locationId, password, ...rest } = userDto;
   const hashedPassword = await bcrypt.hash(password, 10);
 
   const newUser = this.usersRepo.create({
     ...rest,
     password: hashedPassword,
-    role: roleId ? { id: roleId } as any : undefined,
+    roles: roleIds?.map((id: number) => ({ id })) || [],
     location: locationId ? { id: locationId } as any : undefined,
-   });
+  });
 
-    return this.usersRepo.save(newUser);
-   }
+  return this.usersRepo.save(newUser);
+}
+
 
     findByEmail(email: string) {
         return this.usersRepo.findOne({ where: { email } });
     }
 
     findById(id: number) {
-        return this.usersRepo.findOne({ where: { id }, relations: ['location', 'location.parent', 'location.parent.parent', 'role',] });
+        return this.usersRepo.findOne({ where: { id }, relations: ['location', 'location.parent', 'location.parent.parent', 'roles'],
+ });
     }
 
     findByLocation(locationId: number) {
@@ -51,17 +53,21 @@ export class UsersService {
     async findUsersInLocation(userId: number): Promise<User[]> {
         const user = await this.usersRepo.findOne({
             where: { id: userId },
-            relations: ['location'],
+            relations: ['location', 'roles'],
         });
 
         if (!user) {
           throw new NotFoundException('User not found');
        }
 
-       if (user.role?.name.toLowerCase() === 'admin') {
-        return this.usersRepo.find({
-         relations: ['role', 'location'],
-        });
+       const isAdmin = user.roles?.some(
+        (role) => role.name.toLowerCase() === 'admin',
+       );
+
+        if (isAdmin) {
+         return this.usersRepo.find({
+         relations: ['roles', 'location'],
+       });
        }
 
        if (!user.location) {
@@ -71,12 +77,12 @@ export class UsersService {
 
         return this.usersRepo.find({
             where: { location: { id: In(accessibleLocationIds) } },
-            relations: ['role', 'location'],
+            relations: ['roles', 'location'],
         });
     }
 
     async updateUser(id: number, userDto: any): Promise<User> {
-       const user = await this.usersRepo.findOne({ where: { id }, relations: ['role', 'location'] });
+       const user = await this.usersRepo.findOne({ where: { id }, relations: ['roles', 'location'] });
 
        if (!user) {
          throw new NotFoundException(`User with ID ${id} not found`);
@@ -86,10 +92,10 @@ export class UsersService {
          userDto.password = await bcrypt.hash(userDto.password, 10);
        }
 
-       if (userDto.roleId) {
-         user.role = { id: userDto.roleId } as any;
-         delete userDto.roleId;
-       }
+       if (userDto.roleIds) {
+        user.roles = userDto.roleIds.map((id: number) => ({ id })) as any;
+        delete userDto.roleIds;
+     }
 
        if (userDto.locationId) {
          user.location = { id: userDto.locationId } as any;

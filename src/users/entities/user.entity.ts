@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
 import { Location } from '../../locations/entities/location.entity';
 import { Role } from 'src/roles/entities/role.entity';
 
@@ -20,9 +20,13 @@ export class User {
     @JoinColumn({ name: 'location_id' })
     location: Location;
 
-    @ManyToOne(() => Role, { nullable: false, eager: true })
-    @JoinColumn({ name: 'role_id' })
-    role: Role;
+    @ManyToMany(() => Role, (role) => role.users, { eager: true })
+    @JoinTable({
+    name: 'user_roles',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
+    })
+    roles: Role[];
 
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'created_by' })

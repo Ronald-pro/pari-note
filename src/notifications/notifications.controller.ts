@@ -46,36 +46,27 @@ async getStillbirthRecords(
   @Param('locationId') locationId: number,
   @Query('startDate') startDate?: string,
   @Query('endDate') endDate?: string,
-  @Query('page') page = 1,
-  @Query('limit') limit = 50,
+  // @Query('page') page = 1,
+  // @Query('limit') limit = 50,
 
 ) {
   return this.notificationsService.getStillbirthRecords(
     Number(locationId),
     startDate,
     endDate,
-    Number(page),
-    Number(limit),
+    // Number(page),
+    // Number(limit),
   );
 }
-
-@UseGuards(JwtAuthGuard)
-@Roles('admin')
-@Get('stillbirths/records/admin')
-async getStillbirthRecordsAdmin(
-  @Req() req,
-  @Query('startDate') startDate?: string,
-  @Query('endDate') endDate?: string,
-  @Query('page') page = 1,
-  @Query('limit') limit = 50,
-) {
-
-  return this.notificationsService.getStillbirthRecordsAdmin(
-    startDate,
-    endDate,
-    Number(page),
-    Number(limit),
-  );
-}
+// getStillbirthRecordsAdmin  @Get('stillbirths/records/admin')
+  @UseGuards(JwtAuthGuard)
+  @Get('stillbirths/records/admin')
+  async getStillbirthRecordsAdmin (
+    @Req() req,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    return this.notificationsService.getStillbirthRecordsAdmin(startDate, endDate);
+  }
 
 }

@@ -247,8 +247,8 @@ async getStillbirthRecords(
   locationId: number,
   startDate?: string,
   endDate?: string,
-  page = 1,
-  limit = 50,
+  // page = 1,
+  // limit = 50,
 ) {
 
   const qb = this.notificationsRepo
@@ -263,31 +263,23 @@ async getStillbirthRecords(
   if (endDate) qb.andWhere('notification.dateOfNotification <= :endDate', { endDate });
 
   return qb
-    .skip((page - 1) * limit)
-    .take(limit)
+    // .skip((page - 1) * limit)
+    // .take(limit)
     .getMany();
 }
 
-async getStillbirthRecordsAdmin(
-  startDate?: string,
-  endDate?: string,
-  page = 1,
-  limit = 50,
-) {
-  const qb = this.notificationsRepo
+async getStillbirthRecordsAdmin(startDate: string, endDate: string) {
+  const query = this.notificationsRepo
     .createQueryBuilder('notification')
     .leftJoinAndSelect('notification.babies', 'baby')
     .leftJoinAndSelect('notification.mother', 'mother')
-    .leftJoinAndSelect('notification.location', 'location')
-    .where('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' });
+    .where('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
+    .andWhere('notification.dateOfNotification >= :startDate', { startDate })
+    .andWhere('notification.dateOfNotification <= :endDate', { endDate });
 
-  if (startDate) qb.andWhere('notification.dateOfNotification >= :startDate', { startDate });
-  if (endDate) qb.andWhere('notification.dateOfNotification <= :endDate', { endDate });
+  console.log('Query:', query.getSql());
 
-  return qb
-    .skip((page - 1) * limit)
-    .take(limit)
-    .getMany();
+  return query.getMany();
 }
 
 

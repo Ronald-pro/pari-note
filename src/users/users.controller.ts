@@ -9,7 +9,7 @@ export class UsersController {
     constructor(private usersService: UsersService) { }
 
     @SetMetadata('permission', 'user:create')
-    @UseGuards(JwtAuthGuard, RolesGuard)
+    @UseGuards(JwtAuthGuard)
     @Post('register')
     async register(@Body() body: any) {
         return this.usersService.create(body);
