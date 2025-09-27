@@ -35,8 +35,8 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('stillbirths/:locationId')
-  async getStillbirthStats(@Param('locationId') locationId: number) {
-    return this.notificationsService.getStillbirthStats(Number(locationId));
+  async getStillbirthStats(@Param('locationId') locationId: number, @Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    return this.notificationsService.getStillbirthStats(Number(locationId), startDate, endDate);
   }
 
 @UseGuards(JwtAuthGuard)

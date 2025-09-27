@@ -111,7 +111,7 @@ export class NotificationsService {
     return notification;
   }
 
-async getStillbirthStats(locationId: number) {
+async getStillbirthStats(locationId: number, startDate: string, endDate: string) {
 
   const today = new Date();
 
@@ -183,6 +183,8 @@ async getStillbirthStats(locationId: number) {
     .innerJoin('notification.mother', 'mother')
     .where('location.id = :locationId', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
+    .andWhere('notification.dateOfNotification >= :startDate', { startDate })
+    .andWhere('notification.dateOfNotification <= :endDate', { endDate })
     .select("DATE_FORMAT(notification.dateOfNotification, '%M %Y')", 'month')
     .addSelect('COUNT(*)', 'total')
     .addSelect('AVG(baby.birthWeight)', 'avgWeight')
