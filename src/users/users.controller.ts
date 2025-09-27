@@ -39,4 +39,11 @@ export class UsersController {
     async updateUser(@Param('id') id: number, @Body() body: any) {
         return this.usersService.updateUser(id, body);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Get(':id/location-tree')
+    async getUserLocationTree(@Param('id') id: number) {
+    return this.usersService.getUserLocationWithChildren(+id);
+   }
+
 }

@@ -105,6 +105,58 @@ export class UsersService {
        Object.assign(user, userDto);
        return this.usersRepo.save(user);
    }
+async getUserLocationWithChildren(userId: number) {
+  const user = await this.usersRepo.findOne({
+    where: { id: userId },
+    relations: ['location', 'location.parent', 'roles'],
+  });
+
+  if (!user) {
+    throw new NotFoundException(`User with ID ${userId} not found`);
+  }
+
+  const roleNames = user.roles.map(r => r.name.toLowerCase());
+  let rootLocation = user.location;
+
+  if (roleNames.includes('facility-incharge user')) {
+    if (rootLocation.type === 'facility' && rootLocation.parent) {
+      rootLocation = rootLocation.parent;
+    }
+  } else if (roleNames.includes('subcounty user')) {
+    if (rootLocation.type === 'facility' && rootLocation.parent) {
+      rootLocation = rootLocation.parent;
+    }
+  } else if (roleNames.includes('county user')) {
+    if (rootLocation.type === 'facility' && rootLocation.parent?.parent) {
+      rootLocation = rootLocation.parent.parent;
+    } else if (rootLocation.type === 'subcounty' && rootLocation.parent) {
+      rootLocation = rootLocation.parent;
+    }
+  } else if (roleNames.includes('admin')) {
+
+  }
+
+  const locationTree = await this.locationsService.getLocationWithChildren(rootLocation.id);
+
+  function cleanLocation(loc: any, parentId: | null = null) {
+    const { id, name, type, children } = loc;
+    return {
+      id: id,
+      name,
+      type,
+      parentId,
+      children: children?.map((child: any) => cleanLocation(child, id)) ?? [],
+    };
+  }
+
+  return {
+    location: cleanLocation(locationTree),
+  };
+}
+
+
+
+
 
 }
 

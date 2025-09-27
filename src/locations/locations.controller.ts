@@ -50,4 +50,7 @@ export class LocationsController {
     getTree() {
         return this.locService.findTree();
     }
+
+
+
 }

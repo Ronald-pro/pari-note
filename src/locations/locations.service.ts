@@ -89,4 +89,19 @@ export class LocationsService {
         return ids;
     }
 
+async getLocationWithChildren(locationId: number) {
+  const location = await this.locRepo.findOne({
+    where: { id: locationId },
+    relations: ['children', 'children.children', 'children.children.children'], 
+  });
+
+  if (!location) {
+    throw new NotFoundException('Location not found');
+  }
+
+  return location;
+}
+
+
+
 }
