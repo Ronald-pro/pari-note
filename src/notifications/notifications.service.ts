@@ -111,15 +111,13 @@ export class NotificationsService {
     return notification;
   }
 
-async getStillbirthStats(locationId: number, startDate: string, endDate: string) {
-
-  const today = new Date();
+async getStillbirthStats(locationId: number[], startDate: string, endDate: string) {
 
   const totalToday = await this.babiesRepo
     .createQueryBuilder('baby')
     .innerJoin('baby.notification', 'notification')
     .innerJoin('notification.location', 'location')
-    .where('location.id = :locationId', { locationId })
+    .where('location.id IN (:locationId)', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
     .andWhere('notification.dateOfNotification = CURDATE()')
     .getCount();
@@ -128,7 +126,7 @@ async getStillbirthStats(locationId: number, startDate: string, endDate: string)
     .createQueryBuilder('baby')
     .innerJoin('baby.notification', 'notification')
     .innerJoin('notification.location', 'location')
-    .where('location.id = :locationId', { locationId })
+    .where('location.id IN (:locationId)', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
     .andWhere('notification.dateOfNotification = CURDATE()')
     .select('baby.sex', 'sex')
@@ -145,7 +143,7 @@ async getStillbirthStats(locationId: number, startDate: string, endDate: string)
     .createQueryBuilder('baby')
     .innerJoin('baby.notification', 'notification')
     .innerJoin('notification.location', 'location')
-    .where('location.id = :locationId', { locationId })
+    .where('location.id IN (:locationId)', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
     .andWhere('notification.dateOfNotification = CURDATE()')
     .select('baby.outcome', 'type')
@@ -163,7 +161,7 @@ async getStillbirthStats(locationId: number, startDate: string, endDate: string)
     .innerJoin('baby.notification', 'notification')
     .innerJoin('notification.location', 'location')
     .innerJoin('notification.mother', 'mother')
-    .where('location.id = :locationId', { locationId })
+    .where('location.id IN (:locationId)', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
     .andWhere('notification.dateOfNotification = CURDATE()')
     .select('mother.placeOfDelivery', 'place')
@@ -181,37 +179,19 @@ async getStillbirthStats(locationId: number, startDate: string, endDate: string)
     .innerJoin('baby.notification', 'notification')
     .innerJoin('notification.location', 'location')
     .innerJoin('notification.mother', 'mother')
-    .where('location.id = :locationId', { locationId })
+    .where('location.id IN (:locationId)', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' })
     .andWhere('notification.dateOfNotification >= :startDate', { startDate })
     .andWhere('notification.dateOfNotification <= :endDate', { endDate })
     .select("DATE_FORMAT(notification.dateOfNotification, '%M %Y')", 'month')
     .addSelect('COUNT(*)', 'total')
     .addSelect('AVG(baby.birthWeight)', 'avgWeight')
-    .addSelect(
-      `SUM(CASE WHEN LOWER(baby.sex) = 'male' THEN 1 ELSE 0 END)`,
-      'male'
-    )
-    .addSelect(
-      `SUM(CASE WHEN LOWER(baby.sex) = 'female' THEN 1 ELSE 0 END)`,
-      'female'
-    )
-    .addSelect(
-      `SUM(CASE WHEN LOWER(baby.outcome) = 'fresh stillbirth' THEN 1 ELSE 0 END)`,
-      'fresh'
-    )
-    .addSelect(
-      `SUM(CASE WHEN LOWER(baby.outcome) = 'macerated stillbirth' THEN 1 ELSE 0 END)`,
-      'macerated'
-    )
-    .addSelect(
-      `SUM(CASE WHEN LOWER(mother.placeOfDelivery) = 'facility' THEN 1 ELSE 0 END)`,
-      'facility'
-    )
-    .addSelect(
-      `SUM(CASE WHEN LOWER(mother.placeOfDelivery) = 'home' THEN 1 ELSE 0 END)`,
-      'home'
-    )
+    .addSelect(`SUM(CASE WHEN LOWER(baby.sex) = 'male' THEN 1 ELSE 0 END)`, 'male')
+    .addSelect(`SUM(CASE WHEN LOWER(baby.sex) = 'female' THEN 1 ELSE 0 END)`, 'female')
+    .addSelect(`SUM(CASE WHEN LOWER(baby.outcome) = 'fresh stillbirth' THEN 1 ELSE 0 END)`, 'fresh')
+    .addSelect(`SUM(CASE WHEN LOWER(baby.outcome) = 'macerated stillbirth' THEN 1 ELSE 0 END)`, 'macerated')
+    .addSelect(`SUM(CASE WHEN LOWER(mother.placeOfDelivery) = 'facility' THEN 1 ELSE 0 END)`, 'facility')
+    .addSelect(`SUM(CASE WHEN LOWER(mother.placeOfDelivery) = 'home' THEN 1 ELSE 0 END)`, 'home')
     .groupBy("DATE_FORMAT(notification.dateOfNotification, '%M %Y')")
     .orderBy("MIN(notification.dateOfNotification)", 'ASC')
     .getRawMany();
@@ -220,18 +200,9 @@ async getStillbirthStats(locationId: number, startDate: string, endDate: string)
     month: row.month,
     total: Number(row.total),
     avgWeight: row.avgWeight ? Number(row.avgWeight) : null,
-    sex: {
-      male: Number(row.male),
-      female: Number(row.female),
-    },
-    type: {
-      fresh: Number(row.fresh),
-      macerated: Number(row.macerated),
-    },
-    place: {
-      facility: Number(row.facility),
-      home: Number(row.home),
-    },
+    sex: { male: Number(row.male), female: Number(row.female) },
+    type: { fresh: Number(row.fresh), macerated: Number(row.macerated) },
+    place: { facility: Number(row.facility), home: Number(row.home) },
   }));
 
   return {
@@ -245,8 +216,9 @@ async getStillbirthStats(locationId: number, startDate: string, endDate: string)
   };
 }
 
+
 async getStillbirthRecords(
-  locationId: number,
+  locationId: number[],
   startDate?: string,
   endDate?: string,
   // page = 1,
@@ -258,7 +230,7 @@ async getStillbirthRecords(
     .leftJoinAndSelect('notification.babies', 'baby')
     .leftJoinAndSelect('notification.mother', 'mother')
     .leftJoinAndSelect('notification.location', 'location')
-    .where('location.id = :locationId', { locationId })
+    .where('location.id IN (:locationId)', { locationId })
     .andWhere('LOWER(baby.outcome) LIKE :outcome', { outcome: '%stillbirth%' });
 
   if (startDate) qb.andWhere('notification.dateOfNotification >= :startDate', { startDate });

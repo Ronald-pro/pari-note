@@ -92,7 +92,7 @@ export class LocationsService {
 async getLocationWithChildren(locationId: number) {
   const location = await this.locRepo.findOne({
     where: { id: locationId },
-    relations: ['children', 'children.children', 'children.children.children'], 
+    relations: ['children', 'children.children', 'children.children.children'],
   });
 
   if (!location) {
@@ -101,6 +101,46 @@ async getLocationWithChildren(locationId: number) {
 
   return location;
 }
+
+async getLocationIds(locationId: number, isAdmin = false): Promise<number[]> {
+  if (isAdmin) {
+    const facilities = await this.locRepo.find({ where: { type: 'facility' } });
+    return facilities.map(f => f.id);
+  }
+
+  const allLocations = await this.locRepo.find({
+    relations: ['parent'],
+    select: ['id', 'type', 'parent'],
+  });
+
+  const facilityIds: number[] = [];
+
+  const collect = (id: number) => {
+    const children = allLocations.filter(l => l.parent?.id === id);
+    for (const child of children) {
+      if (child.type === 'facility') {
+        facilityIds.push(child.id);
+      } else {
+        collect(child.id);
+      }
+    }
+  };
+
+  // Self check: if the node is a facility, include it directly
+  const self = allLocations.find(l => l.id === locationId);
+  if (self?.type === 'facility') {
+    facilityIds.push(self.id);
+  } else {
+    collect(locationId);
+  }
+console.log('Facility IDs:', facilityIds);
+  return facilityIds;
+}
+
+
+
+
+
 
 
 
