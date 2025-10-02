@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, ManyToMany, JoinTable, DeleteDateColumn } from 'typeorm';
 import { Location } from '../../locations/entities/location.entity';
 import { Role } from 'src/roles/entities/role.entity';
 
@@ -35,4 +35,7 @@ export class User {
     @ManyToOne(() => User, { nullable: true })
     @JoinColumn({ name: 'updated_by' })
     updatedBy: User;
+
+    @DeleteDateColumn({ nullable: true })
+    deletedAt?: Date;
 }

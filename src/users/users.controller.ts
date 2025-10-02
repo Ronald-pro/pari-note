@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, UseGuards, Request, SetMetadata } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, UseGuards, Request, ParseIntPipe, SetMetadata, Delete } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { UsersService } from './users.service';
@@ -45,5 +45,12 @@ export class UsersController {
     async getUserLocationTree(@Param('id') id: number) {
     return this.usersService.getUserLocationWithChildren(+id);
    }
+
+   @UseGuards(JwtAuthGuard)
+   @Delete('delete/:id')
+   async softDeleteUser(@Param('id', ParseIntPipe) id: number) {
+   return this.usersService.deleteUser(id);
+}
+
 
 }

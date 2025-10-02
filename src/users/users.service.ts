@@ -154,6 +154,13 @@ async getUserLocationWithChildren(userId: number) {
   };
 }
 
+async deleteUser(id: number) {
+  const result = await this.usersRepo.softDelete(id);
+  if (result.affected === 0) {
+    throw new NotFoundException(`User with ID ${id} not found`);
+  }
+  return { message: `User with ID ${id} deleted successfully` };
+}
 
 
 
