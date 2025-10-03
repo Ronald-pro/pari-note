@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from './entities/user.entity';
 import { LocationsService } from 'src/locations/locations.service';
+import { Role } from 'src/roles/entities/role.entity';
 
 import * as bcrypt from 'bcrypt';
 
@@ -11,6 +12,9 @@ export class UsersService {
     constructor(
         @InjectRepository(User) private usersRepo: Repository<User>,
         private readonly locationsService: LocationsService,
+        @InjectRepository(Role)
+        private rolesRepo: Repository<Role>,
+
     ) { }
 
   async create(userDto: any) {
@@ -76,35 +80,38 @@ export class UsersService {
         const accessibleLocationIds = await this.locationsService.getAccessibleLocationIds(user.location.id);
 
         return this.usersRepo.find({
-            where: { location: { id: In(accessibleLocationIds) } },
-            relations: ['roles', 'location'],
-        });
+        where: { location: { id: In(accessibleLocationIds) } },
+       relations: ['roles', 'roles.permissions', 'location'],
+      });
+
     }
 
     async updateUser(id: number, userDto: any): Promise<User> {
-       const user = await this.usersRepo.findOne({ where: { id }, relations: ['roles', 'location'] });
+  const user = await this.usersRepo.findOne({ where: { id }, relations: ['roles', 'location'] });
 
-       if (!user) {
-         throw new NotFoundException(`User with ID ${id} not found`);
-       }
+  if (!user) {
+    throw new NotFoundException(`User with ID ${id} not found`);
+  }
 
-       if (userDto.password) {
-         userDto.password = await bcrypt.hash(userDto.password, 10);
-       }
+  if (userDto.password) {
+    userDto.password = await bcrypt.hash(userDto.password, 10);
+  }
 
-       if (userDto.roleIds) {
-        user.roles = userDto.roleIds.map((id: number) => ({ id })) as any;
-        delete userDto.roleIds;
-     }
+  if (userDto.roleIds) {
+    const roles = await this.rolesRepo.findByIds(userDto.roleIds);
+    user.roles = roles;
+    delete userDto.roleIds;
+  }
 
-       if (userDto.locationId) {
-         user.location = { id: userDto.locationId } as any;
-         delete userDto.locationId;
-       }
+  if (userDto.locationId) {
+    user.location = { id: userDto.locationId } as any;
+    delete userDto.locationId;
+  }
 
-       Object.assign(user, userDto);
-       return this.usersRepo.save(user);
+  Object.assign(user, userDto);
+  return this.usersRepo.save(user); 
    }
+
 async getUserLocationWithChildren(userId: number) {
   const user = await this.usersRepo.findOne({
     where: { id: userId },
