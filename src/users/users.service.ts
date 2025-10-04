@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -18,18 +18,50 @@ export class UsersService {
     ) { }
 
   async create(userDto: any) {
-  const { roleIds, locationId, password, ...rest } = userDto;
+  const { roleIds, locationId, password, email, ...rest } = userDto;
   const hashedPassword = await bcrypt.hash(password, 10);
+
+  const existingUser = await this.usersRepo
+    .createQueryBuilder('user')
+    .withDeleted()
+    .where('user.email = :email', { email })
+    .getOne();
+
+  if (existingUser) {
+    if (existingUser.deletedAt) {
+      existingUser.deletedAt = null;
+      existingUser.password = hashedPassword;
+      existingUser.roles = roleIds?.map((id: number) => ({ id })) || [];
+      existingUser.location = locationId ? ({ id: locationId } as any) : undefined;
+      Object.assign(existingUser, rest);
+
+      await this.usersRepo.save(existingUser);
+
+      return {
+        message: 'User restored and registered successfully',
+        user: existingUser,
+      };
+    } else {
+      throw new BadRequestException('User with this email already exists');
+    }
+  }
 
   const newUser = this.usersRepo.create({
     ...rest,
+    email,
     password: hashedPassword,
     roles: roleIds?.map((id: number) => ({ id })) || [],
-    location: locationId ? { id: locationId } as any : undefined,
+    location: locationId ? ({ id: locationId } as any) : undefined,
   });
 
-  return this.usersRepo.save(newUser);
+  const savedUser = await this.usersRepo.save(newUser);
+
+  return {
+    message: 'User registered successfully',
+    user: savedUser,
+  };
 }
+
 
 
     findByEmail(email: string) {
@@ -109,7 +141,7 @@ export class UsersService {
   }
 
   Object.assign(user, userDto);
-  return this.usersRepo.save(user); 
+  return this.usersRepo.save(user);
    }
 
 async getUserLocationWithChildren(userId: number) {
